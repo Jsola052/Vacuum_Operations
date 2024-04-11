@@ -24,7 +24,7 @@ def home(robot, acc, vel):
     home_position = (deg2rad(-90), deg2rad(-90), deg2rad(-90), deg2rad(-90), deg2rad(90), deg2rad(0))
     robot.movej(home_position, acc, vel)
 
-# Calculate the orientation for grinding based on the points
+# Calculate the orientation for vacuuming based on the points
 def vector_to_euler_angles(target_normal):
    initial_vector = np.array([0, 0, 1])
    target_normal = normalize(target_normal)
@@ -42,7 +42,7 @@ def vector_to_euler_angles(target_normal):
    yaw = np.arctan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy**2 + qz**2))
    return roll, pitch, yaw
 
-def getMarker(robot, tool_changer, unlock, lock, vacuum_payload, vacuum_tcp):
+def getVacuum(robot, tool_changer, unlock, lock, vacuum_payload, vacuum_tcp, vacuum_cog):
     home(robot)
     robot.set_tcp((0,0,0,0,0,0))
     tool_changer.write(unlock)
@@ -52,15 +52,16 @@ def getMarker(robot, tool_changer, unlock, lock, vacuum_payload, vacuum_tcp):
     time.sleep(0.2)  
     tool_changer.write(lock)
     time.sleep(0.2)
-    robot.set_payload(vacuum_payload)
+    robot.set_payload(vacuum_payload, vacuum_cog)
     time.sleep(0.2)
     robot.movel((0.25525, -0.69407, 0.07763, 0, 3.141, -0.007), 0.2, 0.2)
     robot.movel((0.25525, -0.69405, 0.29491, 0, 3.141, -0.007), 0.7, 0.7)
     home(robot)
+    time.sleep(0.2)
     robot.set_tcp(vacuum_tcp)
     time.sleep(0.2)
     
-def returnMarker(robot, tool_changer, unlock, normal_payload, normal_tcp):
+def returnVacuum(robot, tool_changer, unlock, normal_payload, normal_tcp):
     home(robot)
     robot.set_tcp(normal_tcp)
     robot.movel((0.25525, -0.69405, 0.29491, 0, 3.141, -0.007), 0.7, 0.7)
@@ -87,18 +88,19 @@ def generatePath(points, normal, rx, ry, rz):
     path.append((last_point, rx, ry, rz))
     return path
 
-# Perform the grinding task
+# Perform the vacuum task
 def checkSurface(ur_control, acc, vel, normal_vector, points, tool, tool_changer):
     home(ur_control.robot, 0.5, 0.5)
     lock = 0
     unlock = 1
     tool_off = 0 
     tool_on = 1
-    vacuum_payload = 1.200
+    vacuum_payload = 2.230
+    vacuum_cog = (-0.012, -0.010, 0.098)
     normal_payload = 1.100
     normal_tcp = (0, 0, 0, 0, 0, 0)
-    vacuum_tcp = (0, 0, 0.21963, 0, 0, 0)
-    getMarker(ur_control.robot, tool_changer, unlock, lock, vacuum_payload, vacuum_tcp)
+    vacuum_tcp = (-0.05199, 0.18001, 0.22699, 2.4210, -0.0025, 0.0778)
+    getVacuum(ur_control.robot, tool_changer, unlock, lock, vacuum_payload, vacuum_tcp, vacuum_cog)
     ur_control.robot.set_payload(vacuum_payload)
     ur_control.robot.set_tcp(vacuum_tcp)
     orientation = vector_to_euler_angles(normal_vector)
@@ -120,7 +122,7 @@ def checkSurface(ur_control, acc, vel, normal_vector, points, tool, tool_changer
         ur_control.robot.movel(x, acc, vel)
     tool.write(tool_off)
     home(ur_control.robot, 0.5, 0.5)
-    returnMarker(ur_control.robot, tool_changer, unlock, normal_payload, normal_tcp)
+    returnVacuum(ur_control.robot, tool_changer, unlock, normal_payload, normal_tcp)
     ur_control.robot.set_payload(normal_payload)
     # Clean
     ur_control.clear_path()
