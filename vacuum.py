@@ -19,6 +19,9 @@ def normalize(v):
         return v
     return v / norm
 
+def get_rotation_angle(v1, v2):
+    return np.arccos(np.dot(v1, v2))
+
 # Move the robot to its home position
 def home(robot, acc, vel):
     home_position = (deg2rad(-90), deg2rad(-90), deg2rad(-90), deg2rad(-90), deg2rad(90), deg2rad(0))
@@ -88,6 +91,15 @@ def generatePath(points, normal, rx, ry, rz):
     path.append((last_point, rx, ry, rz))
     return path
 
+def calculate_rotations(path):
+    rotations = []
+    for counter in range(len(path) - 2):
+        initial_dir_vector =  normalize(np.array(path[counter + 1]) - np.array(path[counter]))
+        final_dir_vector = normalize(np.array(path[counter + 2]) - np.array(path[counter + 1]))
+        angle_of_rotation = get_rotation_angle(initial_dir_vector, final_dir_vector)
+        rotations.append(angle_of_rotation)
+    return rotations
+
 # Perform the vacuum task
 def checkSurface(ur_control, acc, vel, normal_vector, points, tool, tool_changer):
     home(ur_control.robot, 0.5, 0.5)
@@ -101,8 +113,12 @@ def checkSurface(ur_control, acc, vel, normal_vector, points, tool, tool_changer
     normal_tcp = (0, 0, 0, 0, 0, 0)
     vacuum_tcp = (-0.05199, 0.18001, 0.22699, 2.4210, -0.0025, 0.0778)
     getVacuum(ur_control.robot, tool_changer, unlock, lock, vacuum_payload, vacuum_tcp, vacuum_cog)
+    ur_control.robot.movej((-1.57, -1.57, -1.57, -1.57, 1.57, 3.14), 0.2, 0.2)
     ur_control.robot.set_payload(vacuum_payload)
     ur_control.robot.set_tcp(vacuum_tcp)
+    linearPosition = ur_control.robot.getl()
+    linearPosition[1] = -0.400 
+    ur_control.robot.movel(linearPosition[:3]+[0,0,0], 0.2, 0.2)
     orientation = vector_to_euler_angles(normal_vector)
     eax = orientation[0]
     eay = orientation[1]
@@ -118,9 +134,31 @@ def checkSurface(ur_control, acc, vel, normal_vector, points, tool, tool_changer
     rz = linearPosition[5]
     path = generatePath(points, normal_vector, rx, ry, rz)
     tool.write(tool_on)
-    for x in path:
-        ur_control.robot.movel(x, acc, vel)
+    rotations = calculate_rotations(path)
+    counter = 0
+    while counter < len(path) - 1:
+        temp_pos = ur_control.robot.getl()
+        if counter == 0:
+            ur_control.robot.movel(path[counter] + temp_pos[-3:], acc, vel)
+            temp_pos = ur_control.robot.getl()
+            temp_list = temp_pos[:3]
+            temp_v1 = normalize(np.array([0,1,0]))
+            temp_v2 = normalize(np.array(temp_list))
+            o = ur_control.robot.get_orientation() 
+            o.rotate_zb(get_rotation_angle(temp_v1, temp_v2))
+            ur_control.robot.set_orientation(o)
+        elif counter == len(path) - 2:
+            ur_control.robot.movel(path[counter] + temp_pos[-3:], acc, vel)
+        else:
+            ur_control.robot.movel(path[counter] + temp_pos[-3:], acc, vel)
+            o = ur_control.robot.get_orientation() 
+            o.rotate_zb(rotations[counter])
+            ur_control.robot.set_orientation(o)    
+        counter = counter + 1    
+    temp_pos = ur_control.robot.getl()
+    ur_control.robot.movel(path[-1] + temp_pos[-3:])
     tool.write(tool_off)
+    ur_control.robot.set_tcp(normal_tcp)
     home(ur_control.robot, 0.5, 0.5)
     returnVacuum(ur_control.robot, tool_changer, unlock, normal_payload, normal_tcp)
     ur_control.robot.set_payload(normal_payload)
