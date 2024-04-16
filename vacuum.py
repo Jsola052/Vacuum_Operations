@@ -83,14 +83,6 @@ def offset(corner, offset, normal):
    corner_new = corner - offset*normal
    return corner_new
 
-def generatePath(points, normal, rx, ry, rz):
-    path = []
-    last_point = offset(points[0], 0.01, normal)
-    for x in points:
-        path.append((x[0], x[1], x[2], rx, ry, rz))
-    path.append((last_point, rx, ry, rz))
-    return path
-
 def calculate_rotations(path):
     rotations = []
     for counter in range(len(path) - 2):
@@ -101,7 +93,7 @@ def calculate_rotations(path):
     return rotations
 
 # Perform the vacuum task
-def checkSurface(ur_control, acc, vel, normal_vector, points, tool, tool_changer):
+def vacuum(ur_control, acc, vel, normal_vector, points, tool, tool_changer):
     home(ur_control.robot, 0.5, 0.5)
     lock = 0
     unlock = 1
@@ -112,12 +104,14 @@ def checkSurface(ur_control, acc, vel, normal_vector, points, tool, tool_changer
     normal_payload = 1.100
     normal_tcp = (0, 0, 0, 0, 0, 0)
     vacuum_tcp = (-0.05199, 0.18001, 0.22699, 2.4210, -0.0025, 0.0778)
-    getVacuum(ur_control.robot, tool_changer, unlock, lock, vacuum_payload, vacuum_tcp, vacuum_cog)
-    ur_control.robot.movej((-1.57, -1.57, -1.57, -1.57, 1.57, 3.14), 0.2, 0.2)
+    # getVacuum(robot, tool_changer, unlock, lock, vacuum_payload, vacuum_tcp, vacuum_cog)
+    ur_control.robot.movej((-1.57, -1.57, -1.57, -1.57, 1.57, 3.14), 0.5, 0.5)
     ur_control.robot.set_payload(vacuum_payload)
     ur_control.robot.set_tcp(vacuum_tcp)
     linearPosition = ur_control.robot.getl()
     linearPosition[1] = -0.400 
+    linearPosition[0] = -0.400
+    ur_control.robot.movel(linearPosition, 0.2, 0.2)
     ur_control.robot.movel(linearPosition[:3]+[0,0,0], 0.2, 0.2)
     orientation = vector_to_euler_angles(normal_vector)
     eax = orientation[0]
@@ -132,35 +126,42 @@ def checkSurface(ur_control, acc, vel, normal_vector, points, tool, tool_changer
     rx = linearPosition[3]
     ry = linearPosition[4]
     rz = linearPosition[5]
-    path = generatePath(points, normal_vector, rx, ry, rz)
-    tool.write(tool_on)
+    path = points
+    last_point = offset(points[-1], 0.01, normal_vector)
+    # tool.write(tool_on)
     rotations = calculate_rotations(path)
     counter = 0
-    while counter < len(path) - 1:
+    while counter < len(path):
         temp_pos = ur_control.robot.getl()
         if counter == 0:
-            ur_control.robot.movel(path[counter] + temp_pos[-3:], acc, vel)
+            target = path[counter] + temp_pos[-3:]
+            ur_control.robot.movel(target, acc, vel)
             temp_pos = ur_control.robot.getl()
             temp_list = temp_pos[:3]
             temp_v1 = normalize(np.array([0,1,0]))
             temp_v2 = normalize(np.array(temp_list))
             o = ur_control.robot.get_orientation() 
             o.rotate_zb(get_rotation_angle(temp_v1, temp_v2))
-            ur_control.robot.set_orientation(o)
-        elif counter == len(path) - 2:
-            ur_control.robot.movel(path[counter] + temp_pos[-3:], acc, vel)
+            ur_control.robot.set_orientation(o, 0.3, 0.3)
+        elif counter == len(path) - 1:
+            target = path[counter] + temp_pos[-3:]
+            ur_control.robot.movel(target, acc, vel)
         else:
-            ur_control.robot.movel(path[counter] + temp_pos[-3:], acc, vel)
+            target = path[counter] + temp_pos[-3:]
+            ur_control.robot.movel(target, acc, vel)
             o = ur_control.robot.get_orientation() 
-            o.rotate_zb(rotations[counter])
-            ur_control.robot.set_orientation(o)    
+            o.rotate_zb(rotations[counter-1])
+            ur_control.robot.set_orientation(o, 0.3, 0.3)    
         counter = counter + 1    
     temp_pos = ur_control.robot.getl()
-    ur_control.robot.movel(path[-1] + temp_pos[-3:])
-    tool.write(tool_off)
+    target = [temp_pos[0], temp_pos[1], temp_pos[2]]
+    last_point = offset(target, 0.05, normal_vector)
+    final_move = (last_point[0], last_point[1], last_point[2], temp_pos[3], temp_pos[4], temp_pos[5])
+    ur_control.robot.movel(final_move, acc, vel)
+    # tool.write(tool_off)
     ur_control.robot.set_tcp(normal_tcp)
     home(ur_control.robot, 0.5, 0.5)
-    returnVacuum(ur_control.robot, tool_changer, unlock, normal_payload, normal_tcp)
+    # returnVacuum(robot, tool_changer, unlock, normal_payload, normal_tcp)
     ur_control.robot.set_payload(normal_payload)
     # Clean
     ur_control.clear_path()
@@ -213,12 +214,12 @@ class URControlNode(Node):
             tool_changer = board.get_pin(f'd:{tool_changer_relay_pin_number}:o')
             normal_vector = []
             home(self.robot, 0.8, 0.8)
-            checkSurface(self, 0.3, 0.3, normal_vector, points, tool, tool_changer)
+            vacuum(self, 0.3, 0.3, normal_vector, points, tool, tool_changer)
             home(self.robot,0.8,0.8)
             self.robot.close()
             self.robot = None
         else:
-            print("mani has the solution up his ass")
+            print("Connection failed. Check robot state.")
 
     def show_path(self, waypoints):
         marker = Marker() 
