@@ -49,16 +49,19 @@ def getVacuum(robot, tool_changer, unlock, lock, vacuum_payload, vacuum_tcp, vac
     home(robot)
     robot.set_tcp((0,0,0,0,0,0))
     tool_changer.write(unlock)
-    robot.movel((0.25525, -0.69405, 0.29491, 0, 3.141, -0.007), 0.7, 0.7)
-    robot.movel((0.25525, -0.69407, 0.07763, 0, 3.141, -0.007), 0.7, 0.7)
-    robot.movel((0.25521, -0.69403, 0.00607, 0.001, 3.141, -0.006), 0.1, 0.1)
+    robot.movel((0.42244, 0.09685, 0.43866, 0, 3.143, -0.000), 0.7, 0.7)
+    robot.movel((0.42244, 0.09684, 0.28188, 0, 3.143, -0.000), 0.7, 0.7)
+    robot.movel((0.42243, 0.09688, 0.22548, 0, 3.143, -0.000), 0.1, 0.1)
     time.sleep(0.2)  
     tool_changer.write(lock)
     time.sleep(0.2)
     robot.set_payload(vacuum_payload, vacuum_cog)
     time.sleep(0.2)
-    robot.movel((0.25525, -0.69407, 0.07763, 0, 3.141, -0.007), 0.2, 0.2)
-    robot.movel((0.25525, -0.69405, 0.29491, 0, 3.141, -0.007), 0.7, 0.7)
+    robot.movel((0.42243, 0.09685, 0.27521, 0, 3.143, -0.000), 0.2, 0.2)
+    robot.movel((0.43839, 0.09686, 0.27521, 0, 3.143, -0.000), 0.7, 0.7)
+    robot.movel((0.43839, -0.06370, 0.27521, 0, 3.143, -0.000), 0.7, 0.7)
+    robot.movel((0.43839, -0.06370, 0.48735, 0, 3.143, -0.000), 0.7, 0.7)
+
     home(robot)
     time.sleep(0.2)
     robot.set_tcp(vacuum_tcp)
@@ -67,16 +70,18 @@ def getVacuum(robot, tool_changer, unlock, lock, vacuum_payload, vacuum_tcp, vac
 def returnVacuum(robot, tool_changer, unlock, normal_payload, normal_tcp):
     home(robot)
     robot.set_tcp(normal_tcp)
-    robot.movel((0.25525, -0.69405, 0.29491, 0, 3.141, -0.007), 0.7, 0.7)
-    robot.movel((0.25525, -0.69407, 0.07763, 0, 3.141, -0.007), 0.7, 0.7)
-    robot.movel((0.25521, -0.69403, 0.00607, 0.001, 3.141, -0.006), 0.1, 0.1) 
+    robot.movel((0.43839, -0.06370, 0.48735, 0, 3.143, -0.000), 0.7, 0.7)
+    robot.movel((0.43839, -0.06370, 0.27521, 0, 3.143, -0.000), 0.7, 0.7)
+    robot.movel((0.43839, 0.09686, 0.27521, 0, 3.143, -0.000), 0.7, 0.7)
+    robot.movel((0.42243, 0.09685, 0.27521, 0, 3.143, -0.000), 0.2, 0.2)
+    robot.movel((0.42243, 0.09688, 0.22548, 0, 3.143, -0.000), 0.1, 0.1)
     time.sleep(0.2)
     tool_changer.write(unlock)
     time.sleep(0.2)
     robot.set_payload(normal_payload)
     time.sleep(0.2)
-    robot.movel((0.25525, -0.69407, 0.07763, 0, 3.141, -0.007), 0.2, 0.2)
-    robot.movel((0.25525, -0.69405, 0.29491, 0, 3.141, -0.007), 0.7, 0.7)
+    robot.movel((0.42244, 0.09684, 0.28188, 0, 3.143, -0.000), 0.2, 0.2)
+    robot.movel((0.42244, 0.09685, 0.43866, 0, 3.143, -0.000), 0.7, 0.7)
     home(robot)
 
 def offset(corner, offset, normal):
@@ -104,7 +109,7 @@ def vacuum(ur_control, acc, vel, normal_vector, points, tool, tool_changer):
     normal_payload = 1.100
     normal_tcp = (0, 0, 0, 0, 0, 0)
     vacuum_tcp = (-0.05199, 0.18001, 0.22699, 2.4210, -0.0025, 0.0778)
-    # getVacuum(robot, tool_changer, unlock, lock, vacuum_payload, vacuum_tcp, vacuum_cog)
+    getVacuum(ur_control.robot, tool_changer, unlock, lock, vacuum_payload, vacuum_tcp, vacuum_cog)
     ur_control.robot.movej((-1.57, -1.57, -1.57, -1.57, 1.57, 3.14), 0.5, 0.5)
     ur_control.robot.set_payload(vacuum_payload)
     ur_control.robot.set_tcp(vacuum_tcp)
@@ -122,13 +127,9 @@ def vacuum(ur_control, acc, vel, normal_vector, points, tool, tool_changer):
     o.rotate_yb(eay)
     o.rotate_zb(eaz)
     ur_control.robot.set_orientation(o)
-    linearPosition = ur_control.robot.getl() 
-    rx = linearPosition[3]
-    ry = linearPosition[4]
-    rz = linearPosition[5]
     path = points
     last_point = offset(points[-1], 0.01, normal_vector)
-    # tool.write(tool_on)
+    tool.write(tool_on)
     rotations = calculate_rotations(path)
     counter = 0
     while counter < len(path):
@@ -158,10 +159,10 @@ def vacuum(ur_control, acc, vel, normal_vector, points, tool, tool_changer):
     last_point = offset(target, 0.05, normal_vector)
     final_move = (last_point[0], last_point[1], last_point[2], temp_pos[3], temp_pos[4], temp_pos[5])
     ur_control.robot.movel(final_move, acc, vel)
-    # tool.write(tool_off)
+    tool.write(tool_off)
     ur_control.robot.set_tcp(normal_tcp)
     home(ur_control.robot, 0.5, 0.5)
-    # returnVacuum(robot, tool_changer, unlock, normal_payload, normal_tcp)
+    returnVacuum(ur_control.robot, tool_changer, unlock, normal_payload, normal_tcp)
     ur_control.robot.set_payload(normal_payload)
     # Clean
     ur_control.clear_path()
