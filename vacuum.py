@@ -46,11 +46,11 @@ def vector_to_euler_angles(target_normal):
    return roll, pitch, yaw
 
 def getVacuum(robot, tool_changer, unlock, lock, vacuum_payload, vacuum_tcp, vacuum_cog):
-    home(robot)
+    home(robot, 0.5, 0.5)
     robot.set_tcp((0,0,0,0,0,0))
     tool_changer.write(unlock)
-    robot.movel((0.42244, 0.09685, 0.43866, 0, 3.143, -0.000), 0.7, 0.7)
-    robot.movel((0.42244, 0.09684, 0.28188, 0, 3.143, -0.000), 0.7, 0.7)
+    robot.movel((0.42244, 0.09685, 0.43866, 0, 3.143, -0.000), 0.3, 0.3)
+    robot.movel((0.42244, 0.09684, 0.28188, 0, 3.143, -0.000), 0.3, 0.3)
     robot.movel((0.42243, 0.09688, 0.22548, 0, 3.143, -0.000), 0.1, 0.1)
     time.sleep(0.2)  
     tool_changer.write(lock)
@@ -58,21 +58,20 @@ def getVacuum(robot, tool_changer, unlock, lock, vacuum_payload, vacuum_tcp, vac
     robot.set_payload(vacuum_payload, vacuum_cog)
     time.sleep(0.2)
     robot.movel((0.42243, 0.09685, 0.27521, 0, 3.143, -0.000), 0.2, 0.2)
-    robot.movel((0.43839, 0.09686, 0.27521, 0, 3.143, -0.000), 0.7, 0.7)
-    robot.movel((0.43839, -0.06370, 0.27521, 0, 3.143, -0.000), 0.7, 0.7)
-    robot.movel((0.43839, -0.06370, 0.48735, 0, 3.143, -0.000), 0.7, 0.7)
-
-    home(robot)
+    robot.movel((0.43839, 0.09686, 0.27521, 0, 3.143, -0.000), 0.3, 0.3)
+    robot.movel((0.43839, -0.06370, 0.27521, 0, 3.143, -0.000), 0.3, 0.3)
+    robot.movel((0.43839, -0.06370, 0.48735, 0, 3.143, -0.000), 0.3, 0.3)
+    home(robot, 0.5, 0.5)
     time.sleep(0.2)
     robot.set_tcp(vacuum_tcp)
     time.sleep(0.2)
     
 def returnVacuum(robot, tool_changer, unlock, normal_payload, normal_tcp):
-    home(robot)
+    home(robot, 0.5, 0.5)
     robot.set_tcp(normal_tcp)
-    robot.movel((0.43839, -0.06370, 0.48735, 0, 3.143, -0.000), 0.7, 0.7)
-    robot.movel((0.43839, -0.06370, 0.27521, 0, 3.143, -0.000), 0.7, 0.7)
-    robot.movel((0.43839, 0.09686, 0.27521, 0, 3.143, -0.000), 0.7, 0.7)
+    robot.movel((0.43839, -0.06370, 0.48735, 0, 3.143, -0.000), 0.3, 0.3)
+    robot.movel((0.43839, -0.06370, 0.27521, 0, 3.143, -0.000), 0.3, 0.3)
+    robot.movel((0.43839, 0.09686, 0.27521, 0, 3.143, -0.000), 0.3, 0.3)
     robot.movel((0.42243, 0.09685, 0.27521, 0, 3.143, -0.000), 0.2, 0.2)
     robot.movel((0.42243, 0.09688, 0.22548, 0, 3.143, -0.000), 0.1, 0.1)
     time.sleep(0.2)
@@ -81,8 +80,8 @@ def returnVacuum(robot, tool_changer, unlock, normal_payload, normal_tcp):
     robot.set_payload(normal_payload)
     time.sleep(0.2)
     robot.movel((0.42244, 0.09684, 0.28188, 0, 3.143, -0.000), 0.2, 0.2)
-    robot.movel((0.42244, 0.09685, 0.43866, 0, 3.143, -0.000), 0.7, 0.7)
-    home(robot)
+    robot.movel((0.42244, 0.09685, 0.43866, 0, 3.143, -0.000), 0.3, 0.3)
+    home(robot, 0.5, 0.5)
 
 def offset(corner, offset, normal):
    corner_new = corner - offset*normal
