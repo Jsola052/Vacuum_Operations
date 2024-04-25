@@ -157,7 +157,7 @@ def vacuum(robot, acc, vel, normal_vector, points):
         counter = counter + 1    
     temp_pos = robot.getl()
     target = [temp_pos[0], temp_pos[1], temp_pos[2]]
-    last_point = offset(target, 0.05, normal_vector)
+    last_point = offset(target, 0.1, normal_vector)
     final_move = (last_point[0], last_point[1], last_point[2], temp_pos[3], temp_pos[4], temp_pos[5])
     robot.movel(final_move, acc, vel)
     # tool.write(tool_off)

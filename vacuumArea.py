@@ -84,17 +84,43 @@ def returnVacuum(robot, tool_changer, unlock, normal_payload, normal_tcp):
     home(robot, 0.5, 0.5)
 
 def offset(corner, offset, normal):
-   corner_new = corner - offset*normal
+   corner_new = corner + offset*normal
    return corner_new
 
-def calculate_rotations(path):
-    rotations = []
-    for counter in range(len(path) - 2):
-        initial_dir_vector =  normalize(np.array(path[counter + 1]) - np.array(path[counter]))
-        final_dir_vector = normalize(np.array(path[counter + 2]) - np.array(path[counter + 1]))
-        angle_of_rotation = get_rotation_angle(initial_dir_vector, final_dir_vector)
-        rotations.append(angle_of_rotation)
-    return rotations
+def rotate(robot, angle):
+    o = robot.get_orientation()
+    o.rotate_zb(angle)
+    robot.set_orientation(o)
+
+def follow_path(robot, points, acc, vel, normal_vector):
+    p1 = points[0]
+    p2 = points[1]
+    p3 = points[2]
+    p4 = points[3]
+    grid_size = 0.01
+    move_vector = p2 - p1
+    shift_vector = normalize(p4 - p1) * grid_size
+    num_passes = int(np.linalg.norm(p4 - p1) / grid_size) + 1
+    rz_rotation = np.pi
+    current_position = p1.copy()
+    temp_pos = robot.getl()
+    robot.movel((current_position[0], current_position[1], current_position[2], temp_pos[3], temp_pos[4], temp_pos[5]), acc, vel)
+    for pass_num in range(num_passes):
+        move_end = current_position + move_vector
+        rotate(robot, rz_rotation)
+        time.sleep(0.2)
+        temp_pos = robot.getl()
+        robot.movel((move_end[0], move_end[1], move_end[2], temp_pos[3], temp_pos[4], temp_pos[5]), acc, vel)
+        if pass_num < num_passes - 1:
+            next_start_shifted = current_position + shift_vector
+            rotate(robot, -rz_rotation)
+            time.sleep(0.2)
+            temp_pos = robot.getl()
+            robot.movel((next_start_shifted[0], next_start_shifted[1], next_start_shifted[2], temp_pos[3], temp_pos[4], temp_pos[5]), acc, vel)
+            current_position = next_start_shifted
+    last_point = offset(move_end, 0.05, normal_vector)
+    final_move = (last_point[0], last_point[1], last_point[2], temp_pos[3], temp_pos[4], temp_pos[5])
+    robot.movel(final_move, acc, vel)
 
 # Perform the vacuum task
 def vacuum(ur_control, acc, vel, normal_vector, points, tool, tool_changer):
@@ -126,38 +152,9 @@ def vacuum(ur_control, acc, vel, normal_vector, points, tool, tool_changer):
     o.rotate_yb(eay)
     o.rotate_zb(eaz)
     ur_control.robot.set_orientation(o)
-    path = points
-    last_point = offset(points[-1], 0.01, normal_vector)
+    time.sleep(0.2)
     tool.write(tool_on)
-    rotations = calculate_rotations(path)
-    counter = 0
-    while counter < len(path):
-        temp_pos = ur_control.robot.getl()
-        if counter == 0:
-            target = path[counter] + temp_pos[-3:]
-            ur_control.robot.movel(target, acc, vel)
-            temp_pos = ur_control.robot.getl()
-            temp_list = temp_pos[:3]
-            temp_v1 = normalize(np.array([0,1,0]))
-            temp_v2 = normalize(np.array(temp_list))
-            o = ur_control.robot.get_orientation() 
-            o.rotate_zb(get_rotation_angle(temp_v1, temp_v2))
-            ur_control.robot.set_orientation(o, 0.3, 0.3)
-        elif counter == len(path) - 1:
-            target = path[counter] + temp_pos[-3:]
-            ur_control.robot.movel(target, acc, vel)
-        else:
-            target = path[counter] + temp_pos[-3:]
-            ur_control.robot.movel(target, acc, vel)
-            o = ur_control.robot.get_orientation() 
-            o.rotate_zb(rotations[counter-1])
-            ur_control.robot.set_orientation(o, 0.3, 0.3)    
-        counter = counter + 1    
-    temp_pos = ur_control.robot.getl()
-    target = [temp_pos[0], temp_pos[1], temp_pos[2]]
-    last_point = offset(target, 0.05, normal_vector)
-    final_move = (last_point[0], last_point[1], last_point[2], temp_pos[3], temp_pos[4], temp_pos[5])
-    ur_control.robot.movel(final_move, acc, vel)
+    follow_path(ur_control.robot, points, acc, vel, normal_vector)
     tool.write(tool_off)
     ur_control.robot.set_tcp(normal_tcp)
     home(ur_control.robot, 0.5, 0.5)
@@ -212,9 +209,9 @@ class URControlNode(Node):
             tool = board.get_pin(f'd:{tool_relay_pin_number}:o')
             tool_changer_relay_pin_number = 8
             tool_changer = board.get_pin(f'd:{tool_changer_relay_pin_number}:o')
-            normal_vector = []   #Need to insert normal from camera here
+            normal_vector = []
             home(self.robot, 0.8, 0.8)
-            vacuum(self, 0.3, 0.3, normal_vector, points, tool, tool_changer)
+            vacuum(self, 0.2, 0.2, normal_vector, points, tool, tool_changer)
             home(self.robot,0.8,0.8)
             self.robot.close()
             self.robot = None
